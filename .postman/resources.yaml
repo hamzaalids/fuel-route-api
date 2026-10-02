@@ -7,6 +7,8 @@ localResources:
     - ../django
       assessment/fuel-route-api/postman/fuel-route.postman_collection.json
 
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
 cloudResources:
   collections:
     ../postman/collections/Fuel Route API: 4860873a-3c4e-49d5-a7a2-cac506e71be7
