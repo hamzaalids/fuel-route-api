@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fuel Route{% if plan %} · {{ plan.start.query }} → {{ plan.finish.query }}{% endif %}</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    #map { position: absolute; inset: 0; }
+    .panel {
+      position: absolute; top: 12px; right: 12px; z-index: 1000; width: 300px; max-height: calc(100% - 24px);
+      overflow: auto; background: rgba(255,255,255,.96); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.25);
+      padding: 14px 16px; font-size: 14px;
+    }
+    .panel h1 { font-size: 16px; margin: 0 0 8px; }
+    .panel dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 10px; }
+    .panel dt { color: #555; } .panel dd { margin: 0; font-weight: 600; text-align: right; }
+    .panel ol { padding-left: 20px; margin: 0; }
+    .panel li { margin-bottom: 6px; }
+    .panel small { color: #666; }
+    .stop-icon {
+      background: #d9480f; color: #fff; border-radius: 50%; width: 26px; height: 26px; line-height: 26px;
+      text-align: center; font-weight: 700; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4);
+    }
+    .end-icon { border-radius: 50%; width: 18px; height: 18px; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+    .start { background: #2b8a3e; } .finish { background: #c92a2a; }
+    .error { position: absolute; inset: 0; display: grid; place-items: center; background: #fff5f5; color: #c92a2a; }
+    .error div { max-width: 600px; padding: 24px; border: 1px solid #ffc9c9; border-radius: 10px; background: #fff; }
+  </style>
+</head>
+<body>
+{% if error %}
+  <div class="error"><div><h1>Could not build the route (HTTP {{ status }})</h1><p>{{ error }}</p>
+  <p><small>Example: <code>?start=New York, NY&amp;finish=Chicago, IL</code></small></p></div></div>
+{% else %}
+  <div id="map"></div>
+  <aside class="panel">
+    <h1>{{ plan.start.query }} → {{ plan.finish.query }}</h1>
+    <dl>
+      <dt>Distance</dt><dd>{{ plan.route.distance_miles }} mi</dd>
+      <dt>Drive time</dt><dd>{% widthratio plan.route.duration_minutes 60 1 %} h</dd>
+      <dt>Total fuel</dt><dd>{{ plan.summary.total_gallons }} gal</dd>
+      <dt>Total cost</dt><dd>${{ plan.summary.total_fuel_cost|floatformat:2 }}</dd>
+      <dt>Avg $/gal</dt><dd>${{ plan.summary.average_price_per_gallon }}</dd>
+      <dt>Stops</dt><dd>{{ plan.summary.number_of_stops }}</dd>
+    </dl>
+    <small>Origin fill: {{ plan.summary.origin_fill.gallons }} gal @ ${{ plan.summary.origin_fill.price_per_gallon }}
+      = ${{ plan.summary.origin_fill.cost|floatformat:2 }} ({{ plan.summary.origin_fill.price_basis }} price)</small>
+    <ol>
+      {% for stop in plan.fuel_stops %}
+        <li><strong>{{ stop.name }}</strong><br>
+          <small>{{ stop.city }}, {{ stop.state }} · mile {{ stop.miles_from_start }}</small><br>
+          {{ stop.gallons_purchased }} gal @ ${{ stop.price_per_gallon }} = <strong>${{ stop.cost|floatformat:2 }}</strong></li>
+      {% empty %}
+        <li>No intermediate stops needed.</li>
+      {% endfor %}
+    </ol>
+    <p><small>External API calls: {{ plan.meta.external_api_calls }} · cache hit: {{ plan.meta.cache_hit|yesno:"yes,no" }}</small></p>
+  </aside>
+  {{ plan.map.geojson|json_script:"route-geojson" }}
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const data = JSON.parse(document.getElementById("route-geojson").textContent);
+    const map = L.map("map");
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, FAO, NOAA, USGS · routing by OSRM'
+    }).addTo(map);
+
+    const endIcon = cls => L.divIcon({ className: "end-icon " + cls, iconSize: [18, 18] });
+    const stopIcon = n => L.divIcon({ className: "stop-icon", html: String(n), iconSize: [26, 26] });
+
+    const layer = L.geoJSON(data, {
+      style: () => ({ color: "#1c7ed6", weight: 4, opacity: 0.9 }),
+      pointToLayer: (feature, latlng) => {
+        const p = feature.properties;
+        if (p.kind === "start") return L.marker(latlng, { icon: endIcon("start") }).bindPopup("<b>Start</b><br>" + p.label);
+        if (p.kind === "finish") return L.marker(latlng, { icon: endIcon("finish") }).bindPopup("<b>Finish</b><br>" + p.label);
+        return L.marker(latlng, { icon: stopIcon(p.order) }).bindPopup(
+          `<b>#${p.order} ${p.name}</b><br>${p.city}, ${p.state}<br>` +
+          `mile ${p.miles_from_start}<br>${p.gallons_purchased} gal @ $${p.price_per_gallon} = <b>$${p.cost.toFixed(2)}</b>`);
+      }
+    }).addTo(map);
+    // Keep the whole route visible to the left of the summary panel.
+    map.fitBounds(layer.getBounds(), { paddingTopLeft: [40, 30], paddingBottomRight: [340, 30] });
+  </script>
+{% endif %}
+</body>
+</html>

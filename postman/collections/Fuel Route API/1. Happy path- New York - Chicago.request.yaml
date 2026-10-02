@@ -1,0 +1,33 @@
+$kind: http-request
+name: "1. Happy path: New York -> Chicago"
+url: "{{baseUrl}}/api/v1/route/"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "start": "New York, NY",
+      "finish": "Chicago, IL"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('200 ok', () => pm.response.to.have.status(200));
+      pm.test('exactly one external API call (OSRM)', () => pm.expect(body.meta.external_api_calls).to.eql(1));
+      pm.test('total gallons == distance / 10', () => pm.expect(Math.abs(body.summary.total_gallons - body.route.distance_miles / 10)).to.be.below(0.002));
+      pm.test('stop costs + origin fill == total', () => {
+        const cents = x => Math.round(x * 100);
+        const sum = body.fuel_stops.reduce((a, s) => a + cents(s.cost), 0) + cents(body.summary.origin_fill.cost);
+        pm.expect(sum).to.eql(cents(body.summary.total_fuel_cost));
+      });
+      pm.test('no leg longer than 500 miles', () => {
+        const pts = [0, ...body.fuel_stops.map(s => s.miles_from_start), body.route.distance_miles];
+        for (let i = 1; i < pts.length; i++) pm.expect(pts[i] - pts[i - 1]).to.be.at.most(500);
+      });
+      pm.collectionVariables.set('mapUrl', body.map.url);
+      console.log('Map page: ' + pm.collectionVariables.get('baseUrl') + body.map.url);
+    language: text/javascript
+order: 2000

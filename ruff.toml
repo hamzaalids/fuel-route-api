@@ -1,0 +1,16 @@
+target-version = "py312"
+line-length = 110
+extend-exclude = [".venv", "*/migrations/*"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "N", "RUF"]
+ignore = [
+    "RUF012",  # mutable class attributes are idiomatic in Django
+    "N818",    # domain exceptions are named per the API contract (NoFeasiblePlan, OutsideUSA, ...)
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[format]
+quote-style = "double"

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Django
+db.sqlite3
+*.log
+
+# Env / secrets
+.env
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Offline-pipeline scratch (large downloads + resumable geocode cache)
+data/raw/
+data/nominatim_cache.json
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

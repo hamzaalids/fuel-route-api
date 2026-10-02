@@ -1,0 +1,23 @@
+$kind: http-request
+name: "2. Cache-hit demo: repeat New York -> Chicago"
+url: "{{baseUrl}}/api/v1/route/"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "start": "new york, ny",
+      "finish": "Chicago, Illinois"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('200 ok', () => pm.response.to.have.status(200));
+      pm.test('served from cache', () => pm.expect(body.meta.cache_hit).to.eql(true));
+      pm.test('zero external API calls', () => pm.expect(body.meta.external_api_calls).to.eql(0));
+      pm.test('fast', () => pm.expect(pm.response.responseTime).to.be.below(500));
+    language: text/javascript
+order: 3000

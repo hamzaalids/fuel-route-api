@@ -1,0 +1,24 @@
+$kind: http-request
+name: "5. Short trip (< 500 mi): Denver -> Colorado Springs"
+url: "{{baseUrl}}/api/v1/route/"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "start": "Denver, CO",
+      "finish": "Colorado Springs, CO"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('200 ok', () => pm.response.to.have.status(200));
+      pm.test('no intermediate stop needed; fuel bought at origin', () => {
+        pm.expect(body.summary.number_of_stops).to.eql(0);
+        pm.expect(body.summary.origin_fill.gallons).to.be.above(0);
+      });
+    language: text/javascript
+order: 6000

@@ -1,0 +1,12 @@
+# Use this workspace to collaborate
+workspace:
+  id: c70b50e5-adf7-4f3e-8e64-23d5c149c1a8
+
+localResources:
+  collections:
+    - ../django
+      assessment/fuel-route-api/postman/fuel-route.postman_collection.json
+
+cloudResources:
+  collections:
+    ../postman/collections/Fuel Route API: 4860873a-3c4e-49d5-a7a2-cac506e71be7

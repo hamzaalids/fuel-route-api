@@ -1,0 +1,8 @@
+$kind: collection
+description: |-
+  Route between two US locations with cost-optimal fuel stops (500-mile range, 10 MPG).
+
+  Run the requests top to bottom. Each request has tests that check the API contract; watch `meta.external_api_calls`, `meta.cache_hit` and `meta.timings_ms` in the response body.
+variables:
+  baseUrl: http://127.0.0.1:8000
+  mapUrl: ""

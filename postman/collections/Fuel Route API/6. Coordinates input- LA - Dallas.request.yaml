@@ -1,0 +1,21 @@
+$kind: http-request
+name: "6. Coordinates input: LA -> Dallas"
+url: "{{baseUrl}}/api/v1/route/"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "start": "34.0522,-118.2437",
+      "finish": "Dallas, TX"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const body = pm.response.json();
+      pm.test('200 ok', () => pm.response.to.have.status(200));
+      pm.test('lat,lon skipped geocoding', () => pm.expect(body.meta.geocode_sources.start).to.eql('coords'));
+    language: text/javascript
+order: 7000
